@@ -8,6 +8,7 @@ from database import (
     update_deck_color, update_deck_commander,
     get_cards_missing_images, update_card_image,
     get_decks_missing_commander_images, update_deck_commander_image,
+    get_deck_cmc_distribution,
 )
 from scryfall import parse_card_list, validate_and_resolve_card
 from moxfield import fetch_moxfield_deck, extract_deck_id, fetch_card_images_bulk
@@ -254,6 +255,13 @@ def api_update_deck_commander(deck_id):
     else:
         update_deck_commander(deck_id, commander_name, commander_image_url)
     return jsonify({"ok": True})
+
+
+@app.route("/api/decks/<int:deck_id>/stats", methods=["GET"])
+def api_deck_stats(deck_id):
+    """Get mana curve stats for a deck."""
+    stats = get_deck_cmc_distribution(deck_id)
+    return jsonify(stats)
 
 
 @app.route("/api/decks/<int:deck_id>/refresh-images", methods=["POST"])

@@ -239,6 +239,54 @@ def update_deck_commander_image(deck_id, image_url):
         conn.close()
 
 
+def get_deck_cmc_distribution(deck_id):
+    """Get CMC distribution for a deck.
+
+    Returns a dict with:
+      - cmc_bars: list of {cmc, count} for cmc 0-5 and 6+ bucket
+      - total_cards: total card count (sum of quantities)
+      - avg_cmc: average CMC (weighted by quantity, lands excluded)
+    """
+    conn = get_db()
+    try:
+        rows = conn.execute("""
+            SELECT cmc, SUM(quantity) as count
+            FROM deck_cards
+            WHERE deck_id = ?
+            GROUP BY cmc
+            ORDER BY cmc
+        """, (deck_id,)).fetchall()
+
+        # Build distribution: 0, 1, 2, 3, 4, 5, 6+
+        cmc_map = {}
+        for r in rows:
+            cmc_map[r["cmc"]] = r["count"]
+
+        cmc_bars = []
+        total_cards = 0
+        weighted_cmc_sum = 0
+        for cmc in range(6):
+            count = cmc_map.get(cmc, 0)
+            cmc_bars.append({"cmc": cmc, "count": count})
+            total_cards += count
+            weighted_cmc_sum += cmc * count
+        # 6+ bucket
+        plus_count = sum(v for k, v in cmc_map.items() if k >= 6)
+        cmc_bars.append({"cmc": 6, "count": plus_count, "label": "6+"})
+        total_cards += plus_count
+        weighted_cmc_sum += 6 * plus_count  # approximate for 6+
+
+        avg_cmc = round(weighted_cmc_sum / total_cards, 2) if total_cards > 0 else 0
+
+        return {
+            "cmc_bars": cmc_bars,
+            "total_cards": total_cards,
+            "avg_cmc": avg_cmc,
+        }
+    finally:
+        conn.close()
+
+
 # --- Card operations ---
 
 def add_card_to_deck(deck_id, card_name, quantity=1, set_code=None, scryfall_id=None,
