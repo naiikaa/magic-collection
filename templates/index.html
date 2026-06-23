@@ -239,7 +239,7 @@
         .filter-btn.clear { border-color: var(--text-muted); }
         .filter-btn.clear:hover { border-color: var(--danger); color: var(--danger); }
         .deck-item-left { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
-        .deck-commander-thumb { width: 48px; height: 48px; border-radius: 4px; object-fit: cover; border: 2px solid var(--border); flex-shrink: 0; }
+        .deck-commander-thumb { width: 48px; height: 36px; border-radius: 4px; object-fit: cover; object-position: top center; border: 2px solid var(--border); flex-shrink: 0; }
         .deck-commander-thumb:hover { border-color: var(--accent); }
         .deck-commander-placeholder { width: 48px; height: 48px; border-radius: 4px; border: 2px dashed var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.2rem; }
         .deck-info { min-width: 0; }
@@ -269,6 +269,12 @@
         .mana-curve-bars .bar-count { font-size: 0.7rem; color: var(--text-dim); }
         .mana-curve-summary { display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-dim); }
         .mana-curve-summary .val { color: var(--text); font-weight: 600; }
+        .foil-badge { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; background: linear-gradient(135deg, #b8860b, #ffd700, #daa520); color: #1a1a1a; cursor: pointer; border: 1px solid #b8860b; vertical-align: middle; }
+        .foil-badge:hover { filter: brightness(1.2); }
+        .foil-badge.foil-off { background: var(--border); color: var(--text-dim); border-color: var(--border-light); }
+        .foil-badge.foil-off:hover { filter: brightness(1.1); }
+        .card-foil-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background: linear-gradient(135deg, rgba(184,134,11,0.15) 0%, rgba(255,215,0,0.1) 50%, rgba(218,165,32,0.15) 100%); border-radius: 6px; }
+        .card-foil-indicator { position: absolute; top: 4px; right: 4px; z-index: 2; }
     </style>
 </head>
 <body>
@@ -303,7 +309,7 @@
         <h2 class="section-title">Add New Deck</h2>
         <div class="add-deck-form">
             <div class="form-group"><label>Deck Name</label><input type="text" id="new-deck-name" placeholder="Enter deck name..." /></div>
-            <div class="form-group"><label>Deck Color</label><div style="display:flex;gap:0.5rem;align-items:center;"><input type="color" id="new-deck-color" value="#e94560" style="width:40px;height:36px;padding:2px;border:1px solid #0f3460;border-radius:4px;background:#16213e;cursor:pointer;" /><div id="color-presets" style="display:flex;gap:4px;flex-wrap:wrap;"></div></div></div>
+            <div class="form-group"><label>Deck Color</label><div style="display:flex;gap:0.5rem;align-items:center;"><input type="color" id="new-deck-color" value="#e94560" style="width:40px;height:36px;padding:2px;border:1px solid #0f3460;border-radius:4px;background:#16213e;cursor:pointer;" /></div></div>
             <div class="form-group"><label>Card List (paste below, one card per line)</label><textarea id="new-deck-cards" placeholder="4 Lightning Bolt&#10;3x Counterspell&#10;1 Black Lotus (LEA)&#10;2 Opt [M21]"></textarea></div>
             <button id="create-deck-btn" onclick="App.createDeck()">Create Deck & Validate Cards</button>
             <span id="validate-spinner"></span>
@@ -850,7 +856,8 @@ var App = (function() {
                 return '<div class="deck-card-row">' +
                     (c.image_url ? '<img src="' + escapeHtml(c.image_url) + '" />' : '<div style="width:40px;height:56px;background:#333;border-radius:3px;flex-shrink:0;"></div>') +
                     '<div class="card-name">' + escapeHtml(c.card_name) +
-                    (c.set_code ? ' <span style="color:#666;">(' + escapeHtml(c.set_code.toUpperCase()) + ')</span>' : '') + '</div>' +
+                    (c.set_code ? ' <span style="color:var(--text-muted);">(' + escapeHtml(c.set_code.toUpperCase()) + ')</span>' : '') + '</div>' +
+                    '<span class="foil-badge ' + (c.is_foil ? '' : 'foil-off') + '" onclick="App.toggleFoil(' + c.id + ')" title="Toggle foil">' + (c.is_foil ? 'FOIL' : 'non-foil') + '</span>' +
                     '<input type="number" value="' + c.quantity + '" min="1" onchange="App.updateCardQty(' + c.id + ', this.value)" />' +
                     '<button class="danger" onclick="App.removeCard(' + c.id + ')">&#x2715;</button>' +
                 '</div>';
@@ -902,6 +909,20 @@ var App = (function() {
         });
     }
 
+    function toggleFoil(cardId) {
+        var card = allDeckCards.find(function(c) { return c.id === cardId; });
+        if (!card) return;
+        var newFoil = card.is_foil ? 0 : 1;
+        fetch('/api/cards/' + cardId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_foil: newFoil })
+        }).then(function() {
+            card.is_foil = newFoil;
+            renderDeckCards(allDeckCards);
+        });
+    }
+
     function removeCard(cardId) {
         fetch('/api/cards/' + cardId, { method: 'DELETE' }).then(function() { loadDeckCards(); });
     }
@@ -932,7 +953,8 @@ var App = (function() {
                     '</div>';
             }
             return '<div class="card-item">' +
-                (c.image_url ? '<img src="' + escapeHtml(c.image_url) + '" alt="' + escapeHtml(c.card_name) + '" loading="lazy" />' : '<div style="width:100%;height:200px;background:#16213e;display:flex;align-items:center;justify-content:center;color:#666;">No image</div>') +
+                (c.image_url ? '<img src="' + escapeHtml(c.image_url) + '" alt="' + escapeHtml(c.card_name) + '" loading="lazy" />' : '<div style="width:100%;height:200px;background:var(--bg-surface);display:flex;align-items:center;justify-content:center;color:var(--text-muted);">No image</div>') +
+                (c.is_foil ? '<div class="card-foil-overlay"></div><span class="foil-badge card-foil-indicator">FOIL</span>' : '') +
                 '<div class="card-info">' +
                     '<div class="card-name">' + escapeHtml(c.card_name) + '</div>' +
                     '<div class="card-meta">' + (c.set_code ? escapeHtml(c.set_code.toUpperCase()) : '') + ' &middot; in ' + c.deck_count + ' deck(s)</div>' +
@@ -1004,6 +1026,14 @@ var App = (function() {
                 return '<span style="width:22px;height:22px;border-radius:50%;display:inline-block;cursor:pointer;border:2px solid rgba(255,255,255,0.15);background:' + c + ';" onclick="document.getElementById(\'moxfield-deck-color\').value=\'' + c + '\" title="' + c + '"></span>';
             }).join('');
         }
+        // Close modal on overlay click
+        document.getElementById('deck-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+        // Close modal on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
     }
 
     return {
@@ -1026,7 +1056,8 @@ var App = (function() {
         refreshDeckImages: refreshDeckImages,
         refreshAllImages: refreshAllImages,
         pollDeckImages: pollDeckImages,
-        setTheme: setTheme
+        setTheme: setTheme,
+        toggleFoil: toggleFoil
     };
 })();
 

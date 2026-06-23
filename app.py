@@ -163,7 +163,7 @@ def api_import_deck():
     cmd_sf_id = None
     all_scryfall_ids = []
     for entry in moxfield_deck["cards"]:
-        quantity, card_name, set_code, scryfall_id, _, mana_cost, type_line, colors, color_identity, cmc = entry
+        quantity, card_name, set_code, scryfall_id, _, mana_cost, type_line, colors, color_identity, cmc, is_foil = entry
         add_card_to_deck(
             deck_id,
             card_name=card_name,
@@ -175,6 +175,7 @@ def api_import_deck():
             color_identity=color_identity,
             cmc=cmc,
             type_line=type_line,
+            is_foil=is_foil,
         )
         if scryfall_id:
             all_scryfall_ids.append(scryfall_id)
@@ -374,6 +375,7 @@ def api_update_card(card_id):
         quantity=data.get("quantity"),
         set_code=data.get("set_code"),
         card_name=data.get("card_name"),
+        is_foil=data.get("is_foil"),
     )
     return jsonify({"ok": True})
 

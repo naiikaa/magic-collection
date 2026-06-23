@@ -61,14 +61,16 @@ def fetch_moxfield_deck(public_id):
     for entry in commanders.values():
         card = entry.get("card", {})
         quantity = entry.get("quantity", 1)
-        cards.append(_parse_card_entry(card, quantity))
+        is_foil = 1 if entry.get("isFoil") else 0
+        cards.append(_parse_card_entry(card, quantity, is_foil))
 
     # Add mainboard cards
     mainboard = data.get("mainboard", {})
     for entry in mainboard.values():
         card = entry.get("card", {})
         quantity = entry.get("quantity", 1)
-        cards.append(_parse_card_entry(card, quantity))
+        is_foil = 1 if entry.get("isFoil") else 0
+        cards.append(_parse_card_entry(card, quantity, is_foil))
 
     # Also include sideboard if present (but skip for now - commander decks don't usually have side)
     # We could add a note about it
@@ -82,7 +84,7 @@ def fetch_moxfield_deck(public_id):
     }
 
 
-def _parse_card_entry(card, quantity):
+def _parse_card_entry(card, quantity, is_foil=0):
     """Parse a Moxfield card entry into our format."""
     set_code = card.get("set", "")
     scryfall_id = card.get("scryfall_id", "")
@@ -104,6 +106,7 @@ def _parse_card_entry(card, quantity):
         colors,
         color_identity,
         cmc,
+        1 if is_foil else 0,
     )
 
 

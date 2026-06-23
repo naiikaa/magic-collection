@@ -58,18 +58,22 @@ def init_db():
             color_identity TEXT DEFAULT '[]',
             cmc REAL DEFAULT 0,
             type_line TEXT DEFAULT '',
+            is_foil INTEGER DEFAULT 0,
             FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
         );
 
         CREATE INDEX IF NOT EXISTS idx_deck_cards_deck_id ON deck_cards(deck_id);
         CREATE INDEX IF NOT EXISTS idx_deck_cards_name ON deck_cards(card_name);
     """)
-    # Migrate existing DB: add commander columns if they don't exist
+    # Migrate existing DB: add columns if they don't exist
     cols = [row[1] for row in conn.execute("PRAGMA table_info(decks)").fetchall()]
     if 'commander_name' not in cols:
         conn.execute("ALTER TABLE decks ADD COLUMN commander_name TEXT DEFAULT ''")
     if 'commander_image_url' not in cols:
         conn.execute("ALTER TABLE decks ADD COLUMN commander_image_url TEXT DEFAULT ''")
+    card_cols = [row[1] for row in conn.execute("PRAGMA table_info(deck_cards)").fetchall()]
+    if 'is_foil' not in card_cols:
+        conn.execute("ALTER TABLE deck_cards ADD COLUMN is_foil INTEGER DEFAULT 0")
     conn.commit()
     conn.close()
 
@@ -291,20 +295,21 @@ def get_deck_cmc_distribution(deck_id):
 
 def add_card_to_deck(deck_id, card_name, quantity=1, set_code=None, scryfall_id=None,
                      image_url=None, mana_cost=None, colors=None, color_identity=None,
-                     cmc=None, type_line=None):
+                     cmc=None, type_line=None, is_foil=0):
     conn = get_db()
     try:
         import json
         conn.execute("""
             INSERT INTO deck_cards (deck_id, card_name, quantity, set_code, scryfall_id,
-                                    image_url, mana_cost, colors, color_identity, cmc, type_line)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    image_url, mana_cost, colors, color_identity, cmc, type_line, is_foil)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (deck_id, card_name, quantity, set_code, scryfall_id, image_url,
               mana_cost or "",
               json.dumps(colors or []),
               json.dumps(color_identity or []),
               cmc or 0,
-              type_line or ""))
+              type_line or "",
+              is_foil or 0))
         conn.commit()
     finally:
         conn.close()
@@ -321,7 +326,7 @@ def get_deck_cards(deck_id):
         conn.close()
 
 
-def update_card(card_id, quantity=None, set_code=None, scryfall_id=None, image_url=None, card_name=None):
+def update_card(card_id, quantity=None, set_code=None, scryfall_id=None, image_url=None, card_name=None, is_foil=None):
     conn = get_db()
     try:
         fields = []
@@ -341,6 +346,9 @@ def update_card(card_id, quantity=None, set_code=None, scryfall_id=None, image_u
         if card_name is not None:
             fields.append("card_name = ?")
             values.append(card_name)
+        if is_foil is not None:
+            fields.append("is_foil = ?")
+            values.append(is_foil)
         if fields:
             values.append(card_id)
             conn.execute(f"UPDATE deck_cards SET {', '.join(fields)} WHERE id = ?", values)
@@ -375,7 +383,8 @@ def get_collection():
             SELECT card_name, scryfall_id, image_url, set_code, type_line, mana_cost,
                    colors, color_identity, cmc,
                    SUM(quantity) as total_quantity,
-                   COUNT(DISTINCT deck_id) as deck_count
+                   COUNT(DISTINCT deck_id) as deck_count,
+                   MAX(is_foil) as is_foil
             FROM deck_cards
             GROUP BY card_name
             ORDER BY card_name
