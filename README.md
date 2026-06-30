@@ -23,9 +23,15 @@ uv run app.py
 Then open http://localhost:5000 in your browser.
 
 
-<img width="3838" height="2044" alt="Screenshot_2026-06-23_16-55-10" src="https://github.com/user-attachments/assets/27c4ec12-5d16-40c9-b23a-396a10a127f8" />
+## Import decks from [Moxfield](https://moxfield.com/) or paste a list of cards
+<img width="2054" height="1565" alt="Screenshot_2026-06-30_19-13-09" src="https://github.com/user-attachments/assets/eba345a5-5d9d-4e89-88af-b21d32ecd58d" />
 
-<img width="3838" height="2044" alt="Screenshot_2026-06-23_16-55-22" src="https://github.com/user-attachments/assets/fcb368aa-59ad-4aa8-a1d9-2e03e0320a9b" />
+## Edit your decks, set a commander or view the mana curve
+<img width="1395" height="1639" alt="Screenshot_2026-06-30_19-12-04" src="https://github.com/user-attachments/assets/f7082a42-b934-4387-836a-d1fb63cb2c6e" />
+
+## Get an overview of your entire collection and see what decks share cards
+<img width="3051" height="1973" alt="Screenshot_2026-06-30_19-11-39" src="https://github.com/user-attachments/assets/04e70621-406b-4d14-91c5-ced01c5084f8" />
+
 
 
 
